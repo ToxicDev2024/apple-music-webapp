@@ -229,9 +229,19 @@
     </div>
 
     <script>
+        console.log('WebApp Script gestartet');
+        
         let tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.enableClosingConfirmation();
+        console.log('Telegram WebApp Objekt:', tg);
+        
+        if (tg) {
+            console.log('Telegram WebApp verfügbar');
+            tg.expand();
+            tg.enableClosingConfirmation();
+            console.log('Telegram WebApp initialisiert');
+        } else {
+            console.error('Telegram WebApp nicht verfügbar!');
+        }
 
         const searchInput = document.querySelector('.search-input');
         const resultsContainer = document.getElementById('results');
@@ -314,6 +324,15 @@
 
         function startDownload(url, title, artist) {
             try {
+                console.log('startDownload aufgerufen mit:', { url, title, artist });
+                
+                // Prüfe ob Telegram WebApp verfügbar ist
+                if (!tg || !tg.sendData) {
+                    console.error('Telegram WebApp nicht verfügbar!');
+                    showFeedback('Fehler: Telegram WebApp nicht verfügbar');
+                    return;
+                }
+                
                 tg.HapticFeedback.impactOccurred('medium');
                 
                 // Erstelle die Download-Daten
@@ -326,14 +345,17 @@
                 
                 // Konvertiere zu JSON und sende
                 const jsonData = JSON.stringify(downloadData);
-                console.log('Sende Daten:', jsonData);
+                console.log('Sende Daten an Telegram:', jsonData);
+                
+                // Versuche die Daten zu senden
                 tg.sendData(jsonData);
+                console.log('Daten erfolgreich gesendet');
                 
                 // Zeige Feedback
                 showFeedback('Download wird gestartet...');
             } catch (error) {
                 console.error('Fehler beim Starten des Downloads:', error);
-                showFeedback('Fehler beim Starten des Downloads');
+                showFeedback('Fehler beim Starten des Downloads: ' + error.message);
             }
         }
 
