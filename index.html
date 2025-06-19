@@ -211,17 +211,17 @@
 <body>
     <div class="header">
         <h1>Apple Music Downloader</h1>
-        <p>Search and download your favorite music</p>
+        <p>Suche und lade deine Lieblingsmusik herunter</p>
     </div>
 
     <div class="filter-container">
-        <button class="filter-button active" data-type="song">Songs</button>
-        <button class="filter-button" data-type="album">Alben</button>
+        <button id="songsBtn" class="filter-btn active" onclick="switchFilter('song')">Songs</button>
+        <button id="albumsBtn" class="filter-btn" onclick="switchFilter('album')">Alben</button>
     </div>
 
     <div class="search-container">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" placeholder="Nach Songs oder Alben suchen...">
+        <input type="text" id="searchInput" placeholder="Suche nach Songs oder Alben..." oninput="handleSearch()">
+        <div id="searchResults"></div>
     </div>
 
     <div class="results-container" id="results">
@@ -229,98 +229,18 @@
     </div>
 
     <script>
-        console.log('WebApp Script gestartet');
-        
         let tg = window.Telegram.WebApp;
-        console.log('Telegram WebApp Objekt:', tg);
-        
-        if (tg) {
-            console.log('Telegram WebApp verfügbar');
-            tg.expand();
-            tg.enableClosingConfirmation();
-            console.log('Telegram WebApp initialisiert');
-        } else {
-            console.error('Telegram WebApp nicht verfügbar!');
-        }
-
-        const searchInput = document.querySelector('.search-input');
-        const resultsContainer = document.getElementById('results');
-        const filterButtons = document.querySelectorAll('.filter-button');
         let currentFilter = 'song';
-        let isSearching = false;
 
-        // Filter-Button Event Listener
-        filterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                currentFilter = button.dataset.type;
-                if (searchInput.value.trim().length >= 2) {
-                    handleSearch({ target: searchInput });
-                }
-            });
-        });
-
-        searchInput.addEventListener('input', debounce(handleSearch, 500));
-
-        async function handleSearch(e) {
-            const query = e.target.value.trim();
-            if (query.length < 2) {
-                resultsContainer.innerHTML = '';
-                return;
-            }
-
-            isSearching = true;
-            resultsContainer.innerHTML = '<div class="loading">Suche läuft...</div>';
-
-            try {
-                const entity = currentFilter === 'album' ? 'album' : 'song';
-                const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=DE&limit=50&entity=${entity}`);
-                const data = await response.json();
-                
-                if (!data.results.length) {
-                    resultsContainer.innerHTML = '<div class="no-results">Keine Ergebnisse gefunden</div>';
-                    return;
-                }
-                
-                displayResults(data.results);
-            } catch (error) {
-                console.error('Fehler bei der Suche:', error);
-                resultsContainer.innerHTML = '<div class="no-results">Ein Fehler ist aufgetreten</div>';
-            } finally {
-                isSearching = false;
-            }
-        }
-
-        function displayResults(results) {
-            resultsContainer.innerHTML = results.map((item, index) => {
-                const isAlbum = currentFilter === 'album';
-                const title = isAlbum ? item.collectionName : item.trackName;
-                const artwork = item.artworkUrl100.replace('100x100', '200x200');
-                const url = isAlbum ? item.collectionViewUrl : item.trackViewUrl;
-                
-                return `
-                    <div class="result-item" data-url="${encodeURIComponent(url)}" data-title="${encodeURIComponent(title)}" data-artist="${encodeURIComponent(item.artistName)}" data-index="${index}">
-                        <img src="${artwork}" alt="${title}" loading="lazy">
-                        <div class="result-info">
-                            <div class="result-title">${title}</div>
-                            <div class="result-artist">${item.artistName}</div>
-                            <span class="result-type">${isAlbum ? 'Album' : 'Song'}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+        // Initialisiere Telegram WebApp
+        window.addEventListener('load', function() {
+            tg.ready();
+            tg.expand();
             
-            // Event-Listener für alle Result-Items hinzufügen
-            document.querySelectorAll('.result-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const url = decodeURIComponent(this.dataset.url);
-                    const title = decodeURIComponent(this.dataset.title);
-                    const artist = decodeURIComponent(this.dataset.artist);
-                    startDownload(url, title, artist);
-                });
-            });
-        }
+            // Setze Theme-Farben
+            document.body.style.backgroundColor = tg.backgroundColor;
+            document.body.style.color = tg.textColor;
+        });
 
         function startDownload(url, title, artist) {
             try {
@@ -345,12 +265,14 @@
                 const jsonData = JSON.stringify(downloadData);
                 console.log('Sende Daten an Telegram:', jsonData);
                 
-                // Versuche die Daten zu senden
-                tg.sendData(jsonData);
-                console.log('Daten erfolgreich gesendet');
-                
-                // Zeige Feedback
+                // Zeige Feedback vor dem Senden
                 showFeedback('Download wird gestartet...');
+                
+                // Sende die Daten
+                tg.sendData(jsonData);
+                
+                // Optional: Schließe die WebApp nach dem Senden
+                // tg.close();
             } catch (error) {
                 console.error('Fehler beim Starten des Downloads:', error);
                 showFeedback('Fehler beim Starten des Downloads: ' + error.message);
@@ -388,32 +310,66 @@
             }, 2000);
         }
 
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
+        function switchFilter(filter) {
+            currentFilter = filter;
+            handleSearch();
         }
 
-        // Initialisiere die WebApp
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                tg.ready();
-                // Fokussiere das Suchfeld automatisch
-                searchInput.focus();
-                
-                // Zeige initiales Feedback
-                showFeedback('Web App bereit');
-            } catch (error) {
-                console.error('Fehler beim Initialisieren:', error);
-                showFeedback('Fehler beim Initialisieren');
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (query.length < 2) {
+                document.getElementById('searchResults').innerHTML = '';
+                return;
             }
-        });
+
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '<div class="loading">Suche läuft...</div>';
+
+            fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=DE&limit=50&entity=${currentFilter}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.results.length) {
+                        resultsContainer.innerHTML = '<div class="no-results">Keine Ergebnisse gefunden</div>';
+                        return;
+                    }
+                    displayResults(data.results);
+                })
+                .catch(error => {
+                    console.error('Fehler bei der Suche:', error);
+                    resultsContainer.innerHTML = '<div class="no-results">Ein Fehler ist aufgetreten</div>';
+                });
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = results.map((item, index) => {
+                const isAlbum = currentFilter === 'album';
+                const title = isAlbum ? item.collectionName : item.trackName;
+                const artwork = item.artworkUrl100.replace('100x100', '200x200');
+                const url = isAlbum ? item.collectionViewUrl : item.trackViewUrl;
+                
+                return `
+                    <div class="result-item" data-url="${encodeURIComponent(url)}" data-title="${encodeURIComponent(title)}" data-artist="${encodeURIComponent(item.artistName)}" data-index="${index}">
+                        <img src="${artwork}" alt="${title}" loading="lazy">
+                        <div class="result-info">
+                            <div class="result-title">${title}</div>
+                            <div class="result-artist">${item.artistName}</div>
+                            <span class="result-type">${isAlbum ? 'Album' : 'Song'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Event-Listener für alle Result-Items hinzufügen
+            document.querySelectorAll('.result-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const url = decodeURIComponent(this.dataset.url);
+                    const title = decodeURIComponent(this.dataset.title);
+                    const artist = decodeURIComponent(this.dataset.artist);
+                    startDownload(url, title, artist);
+                });
+            });
+        }
     </script>
 </body>
 </html> 
