@@ -283,14 +283,14 @@
         }
 
         function displayResults(results) {
-            resultsContainer.innerHTML = results.map(item => {
+            resultsContainer.innerHTML = results.map((item, index) => {
                 const isAlbum = currentFilter === 'album';
                 const title = isAlbum ? item.collectionName : item.trackName;
                 const artwork = item.artworkUrl100.replace('100x100', '200x200');
                 const url = isAlbum ? item.collectionViewUrl : item.trackViewUrl;
                 
                 return `
-                    <div class="result-item" onclick="startDownload('${url}', '${title}', '${item.artistName}')">
+                    <div class="result-item" data-url="${encodeURIComponent(url)}" data-title="${encodeURIComponent(title)}" data-artist="${encodeURIComponent(item.artistName)}" data-index="${index}">
                         <img src="${artwork}" alt="${title}" loading="lazy">
                         <div class="result-info">
                             <div class="result-title">${title}</div>
@@ -300,6 +300,16 @@
                     </div>
                 `;
             }).join('');
+            
+            // Event-Listener für alle Result-Items hinzufügen
+            document.querySelectorAll('.result-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const url = decodeURIComponent(this.dataset.url);
+                    const title = decodeURIComponent(this.dataset.title);
+                    const artist = decodeURIComponent(this.dataset.artist);
+                    startDownload(url, title, artist);
+                });
+            });
         }
 
         function startDownload(url, title, artist) {
