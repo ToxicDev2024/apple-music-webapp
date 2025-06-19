@@ -290,7 +290,7 @@
                 const url = isAlbum ? item.collectionViewUrl : item.trackViewUrl;
                 
                 return `
-                    <div class="result-item" onclick="startDownload('${url}')">
+                    <div class="result-item" onclick="startDownload('${url}', '${title}', '${item.artistName}')">
                         <img src="${artwork}" alt="${title}" loading="lazy">
                         <div class="result-info">
                             <div class="result-title">${title}</div>
@@ -302,17 +302,42 @@
             }).join('');
         }
 
-        function startDownload(url) {
-            tg.HapticFeedback.impactOccurred('medium');
-            // Sende die URL im JSON-Format
-            const data = JSON.stringify({
-                type: currentFilter,
-                url: url
-            });
-            tg.sendData(data);
-            // Zeige Feedback an
+        function startDownload(url, title, artist) {
+            try {
+                tg.HapticFeedback.impactOccurred('medium');
+                
+                // Erstelle die Download-Daten
+                const downloadData = {
+                    type: currentFilter,
+                    url: url,
+                    title: title,
+                    artist: artist
+                };
+                
+                // Konvertiere zu JSON und sende
+                const jsonData = JSON.stringify(downloadData);
+                console.log('Sende Daten:', jsonData);
+                tg.sendData(jsonData);
+                
+                // Zeige Feedback
+                showFeedback('Download wird gestartet...');
+            } catch (error) {
+                console.error('Fehler beim Starten des Downloads:', error);
+                showFeedback('Fehler beim Starten des Downloads');
+            }
+        }
+
+        function showFeedback(message) {
+            // Entferne altes Feedback falls vorhanden
+            const oldFeedback = document.querySelector('.feedback-message');
+            if (oldFeedback) {
+                oldFeedback.remove();
+            }
+
+            // Erstelle neues Feedback
             const feedback = document.createElement('div');
-            feedback.textContent = 'Download gestartet...';
+            feedback.className = 'feedback-message';
+            feedback.textContent = message;
             feedback.style.position = 'fixed';
             feedback.style.bottom = '20px';
             feedback.style.left = '50%';
@@ -322,8 +347,15 @@
             feedback.style.padding = '12px 24px';
             feedback.style.borderRadius = '12px';
             feedback.style.zIndex = '1000';
+            feedback.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
             document.body.appendChild(feedback);
-            setTimeout(() => feedback.remove(), 2000);
+
+            // Entferne Feedback nach 2 Sekunden
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.remove();
+                }
+            }, 2000);
         }
 
         function debounce(func, wait) {
@@ -340,9 +372,17 @@
 
         // Initialisiere die WebApp
         document.addEventListener('DOMContentLoaded', () => {
-            tg.ready();
-            // Fokussiere das Suchfeld automatisch
-            searchInput.focus();
+            try {
+                tg.ready();
+                // Fokussiere das Suchfeld automatisch
+                searchInput.focus();
+                
+                // Zeige initiales Feedback
+                showFeedback('Web App bereit');
+            } catch (error) {
+                console.error('Fehler beim Initialisieren:', error);
+                showFeedback('Fehler beim Initialisieren');
+            }
         });
     </script>
 </body>
