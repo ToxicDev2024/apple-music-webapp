@@ -265,7 +265,7 @@
 
             try {
                 const entity = currentFilter === 'album' ? 'album' : 'song';
-                const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=DE&limit=20&entity=${entity}`);
+                const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=DE&limit=50&entity=${entity}`);
                 const data = await response.json();
                 
                 if (!data.results.length) {
@@ -304,7 +304,26 @@
 
         function startDownload(url) {
             tg.HapticFeedback.impactOccurred('medium');
-            tg.sendData(url);
+            // Sende die URL im JSON-Format
+            const data = JSON.stringify({
+                type: currentFilter,
+                url: url
+            });
+            tg.sendData(data);
+            // Zeige Feedback an
+            const feedback = document.createElement('div');
+            feedback.textContent = 'Download gestartet...';
+            feedback.style.position = 'fixed';
+            feedback.style.bottom = '20px';
+            feedback.style.left = '50%';
+            feedback.style.transform = 'translateX(-50%)';
+            feedback.style.background = 'var(--button-color)';
+            feedback.style.color = 'var(--button-text-color)';
+            feedback.style.padding = '12px 24px';
+            feedback.style.borderRadius = '12px';
+            feedback.style.zIndex = '1000';
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 2000);
         }
 
         function debounce(func, wait) {
